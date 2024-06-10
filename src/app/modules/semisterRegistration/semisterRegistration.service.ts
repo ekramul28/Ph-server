@@ -7,6 +7,7 @@ import { AcademicSemester } from '../academicSemester/academicSemester.model';
 import { query } from 'express';
 import QueryBuilder from '../../builder/querybuilder';
 import mongoose from 'mongoose';
+import { OfferedCourse } from '../OfferedCourse/OfferCourse.model';
 
 const createSemesterRegistrationIntoDB = async (
   payload: TSemesterRegistration,
@@ -135,9 +136,40 @@ const deleteSemesterRegistrationFromDB = async (id: string) => {
   try {
     session.startTransaction();
 
+    const deletedOfferedCourse = await OfferedCourse.deleteMany(
+      {
+        semesterRegistration: id,
+      },
+      { session },
+    );
+
+    if (!deletedOfferedCourse) {
+      throw new AppError(
+        httpStatus.BAD_GATEWAY,
+        'Failed to delete semester registration',
+      );
+    }
+
+    const deletedSemesterRegistration =
+      await SemesterRegistration.findByIdAndDelete(id, {
+        session,
+        new: true,
+      });
+
+    if (!deletedSemesterRegistration) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Failed to delete semester registration',
+      );
+    }
+
+    await session.commitTransaction();
+    await session.endSession();
+
     // const deletedOfferedCourse=await offer
   } catch (err) {
-    console.log(err);
+    await session.abortTransaction();
+    await session.endSession();
   }
 };
 
