@@ -7,7 +7,7 @@ import config from '../config';
 import { User } from '../modules/user/user.model';
 import { TUserRole } from '../modules/user/user.interface';
 
-const auth = (...requiredRoles:TUserRole[]) => {
+const auth = (...requiredRoles: TUserRole[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     // checking if the token is missing
@@ -43,10 +43,27 @@ const auth = (...requiredRoles:TUserRole[]) => {
       throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked ! !');
     }
 
-    if(
+    if (
+      user.passwordChangedAt &&
+      User.isJWTIssuedBeforePasswordChanged(
+        user.passwordChangedAt,
+        iat as number,
+      )
+    ) {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized !');
+    }
 
-    )
+    if (requiredRoles && !requiredRoles.includes(role)) {
+      throw new AppError(
+        httpStatus.UNAUTHORIZED,
+        'You are not authorized  hi!',
+      );
+    }
+
+    req.user = decoded as JwtPayload;
 
     next();
   });
 };
+
+export default auth;
